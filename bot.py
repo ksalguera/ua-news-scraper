@@ -31,7 +31,7 @@ async def setchannel(interaction: discord.Interaction):
     set_channel(guild_id, channel_id)
     await interaction.response.send_message(f"✅ Updates will be posted in <#{channel_id}>.", ephemeral=True)
 
-@tasks.loop(minutes=1)
+@tasks.loop(minutes=60)
 async def post_new_articles():
     latest_links = fetch_latest_articles()
 
