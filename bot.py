@@ -1,6 +1,5 @@
 import os
 import discord
-from discord.ext import tasks
 from discord import app_commands
 from dotenv import load_dotenv
 from scraper import fetch_latest_articles
