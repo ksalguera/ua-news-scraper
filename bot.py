@@ -40,11 +40,13 @@ async def setchannel(interaction: discord.Interaction):
 
 @tree.command(name="fetcharticles", description="Fetch and post up to five recent articles for this channel.")
 async def fetcharticles(interaction: discord.Interaction):
+    await interaction.response.defer(ephemeral=True)  # Defer the response to avoid timeouts
+
     guild_id = str(interaction.guild.id)
     channel = interaction.channel
 
     await fetch_and_post_articles(guild_id, channel)
-    await interaction.response.send_message("✅ Articles fetched and posted.", ephemeral=True)
+    await interaction.followup.send("✅ Articles fetched and posted.", ephemeral=True)
 
 async def fetch_and_post_articles(guild_id, channel):
     latest_articles = fetch_latest_articles()[:5]
