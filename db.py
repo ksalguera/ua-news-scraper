@@ -30,6 +30,7 @@ def setup_tables():
                     id SERIAL PRIMARY KEY,
                     guild_id TEXT NOT NULL,
                     article_url TEXT NOT NULL,
+                    date DATE NOT NULL,
                     posted_at TIMESTAMPTZ DEFAULT now()
                 );
             """)
@@ -53,22 +54,37 @@ def get_channel(guild_id):
             row = cur.fetchone()
             return row[0] if row else None
 
-def get_recent_links(guild_id, limit=20):
+def get_recent_links(guild_id, limit=5):
     with get_db() as conn:
         with conn.cursor() as cur:
             cur.execute("""
                 SELECT article_url FROM posted_articles
                 WHERE guild_id = %s
                 ORDER BY posted_at DESC
-                LIMIT %s
+                LIMIT %s;
             """, (guild_id, limit))
             return [row[0] for row in cur.fetchall()]
 
-def save_article_link(guild_id, article_url):
+def purge_old_articles(guild_id):
     with get_db() as conn:
         with conn.cursor() as cur:
             cur.execute("""
-                INSERT INTO posted_articles (guild_id, article_url)
-                VALUES (%s, %s)
-            """, (guild_id, article_url))
+                DELETE FROM posted_articles
+                WHERE id IN (
+                    SELECT id FROM posted_articles
+                    WHERE guild_id = %s
+                    ORDER BY posted_at DESC
+                    OFFSET 5
+                );
+            """, (guild_id,))
             conn.commit()
+
+def save_article_link(guild_id, article_url, date):
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                INSERT INTO posted_articles (guild_id, article_url, date)
+                VALUES (%s, %s, %s);
+            """, (guild_id, article_url, date))
+            conn.commit()
+    purge_old_articles(guild_id)

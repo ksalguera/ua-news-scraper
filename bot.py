@@ -5,6 +5,9 @@ from discord import app_commands
 from dotenv import load_dotenv
 from scraper import fetch_latest_articles
 from db import setup_tables, set_channel, get_channel, get_recent_links, save_article_link
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from datetime import datetime
+import pytz
 
 load_dotenv()
 
@@ -14,6 +17,8 @@ intents = discord.Intents.default()
 client = discord.Client(intents=intents)
 tree = app_commands.CommandTree(client)
 
+scheduler = AsyncIOScheduler()
+
 @client.event
 async def on_ready():
     print(f"✅ Logged in as {client.user}")
@@ -22,33 +27,51 @@ async def on_ready():
     await tree.sync()
     print("✅ Synced commands with Discord.")
 
-    post_new_articles.start()
+    scheduler.add_job(post_new_articles, 'cron', hour=9, minute=0, timezone='US/Eastern')
+    scheduler.start()
+    print("✅ Scheduler started.")
 
 @tree.command(name="setchannel", description="Set this channel to receive news updates.")
 async def setchannel(interaction: discord.Interaction):
-    guild_id = str(interaction.guild.id)
     channel_id = interaction.channel.id
-    set_channel(guild_id, channel_id)
+    guild_id = str(interaction.guild.id)
+    set_channel(guild_id, str(channel_id))
     await interaction.response.send_message(f"✅ Updates will be posted in <#{channel_id}>.", ephemeral=True)
 
-@tasks.loop(minutes=60)
+@tree.command(name="fetcharticles", description="Fetch and post up to five recent articles for this channel.")
+async def fetcharticles(interaction: discord.Interaction):
+    guild_id = str(interaction.guild.id)
+    channel = interaction.channel
+
+    await fetch_and_post_articles(guild_id, channel)
+    await interaction.response.send_message("✅ Articles fetched and posted.", ephemeral=True)
+
+async def fetch_and_post_articles(guild_id, channel):
+    latest_articles = fetch_latest_articles()[:5]
+    recent_links = get_recent_links(guild_id)
+
+    for article in latest_articles:
+        article_date = datetime.strptime(article['date'], '%b. %d, %Y')
+        if article['link'] not in recent_links:
+            await channel.send(article['link'])
+            save_article_link(guild_id, article['link'], article_date.date())
+
 async def post_new_articles():
-    latest_links = fetch_latest_articles()
+    latest_articles = fetch_latest_articles()[:10]
+    now = datetime.now(pytz.timezone('US/Eastern'))
 
     for guild in client.guilds:
         guild_id = str(guild.id)
         channel_id = get_channel(guild_id)
+        if channel_id:
+            channel = guild.get_channel(int(channel_id))
+            if channel:
+                recent_links = get_recent_links(guild_id)
 
-        if not channel_id:
-            continue
+                for article in latest_articles:
+                    article_date = datetime.strptime(article['date'], '%b. %d, %Y')
+                    if article_date.date() == now.date() and article['link'] not in recent_links:
+                        await channel.send(article['link'])
+                        save_article_link(guild_id, article['link'], article_date.date())
 
-        channel = await client.fetch_channel(int(channel_id))
-        recent_links = get_recent_links(guild_id)
-
-        new_links = [link for link in latest_links if link not in recent_links]
-
-        for link in reversed(new_links):
-            await channel.send(link)
-            save_article_link(guild_id, link)
-    
 client.run(DISCORD_TOKEN)

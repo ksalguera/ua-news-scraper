@@ -19,16 +19,17 @@ def fetch_latest_articles():
 
         soup = BeautifulSoup(response.text, "html.parser")
 
-        articles = soup.select("ul.newsBox li.newsDetail > a")
+        articles = soup.select("ul.newsBox li.newsDetail")
 
-        article_links = []
-        for article in articles[:5]: 
-            link = article.get("href")
+        article_data = []
+        for article in articles:
+            link = article.find("a").get("href")
+            date = article.select_one("dd.newsDate").text.strip()
             if link:
-                link = clean_url(link) 
-            article_links.append(link)
+                link = clean_url(link)
+            article_data.append({"link": link, "date": date})
 
-        return article_links
+        return article_data
     except Exception as e:
         print(f"Error fetching articles: {e}")
         return []
