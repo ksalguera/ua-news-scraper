@@ -54,9 +54,10 @@ async def fetch_and_post_articles(guild_id, channel):
 
     for article in latest_articles:
         article_date = datetime.strptime(article['date'], '%b. %d, %Y')
-        if article['link'] not in recent_links:
-            await channel.send(article['link'])
-            save_article_link(guild_id, article['link'], article_date.date())
+        await channel.send(article['link'])
+        # if article['link'] not in recent_links:
+        #     await channel.send(article['link'])
+        #     save_article_link(guild_id, article['link'], article_date.date())
 
 async def post_new_articles():
     latest_articles = fetch_latest_articles()[:10]
