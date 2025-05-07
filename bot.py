@@ -40,7 +40,7 @@ async def setchannel(interaction: discord.Interaction):
 
 @tree.command(name="fetcharticles", description="Fetch and post up to five recent articles for this channel.")
 async def fetcharticles(interaction: discord.Interaction):
-    await interaction.response.defer(ephemeral=True)  # Defer the response to avoid timeouts
+    await interaction.response.defer(ephemeral=True)
 
     guild_id = str(interaction.guild.id)
     channel = interaction.channel
@@ -53,11 +53,10 @@ async def fetch_and_post_articles(guild_id, channel):
     recent_links = get_recent_links(guild_id)
 
     for article in latest_articles:
-        article_date = datetime.strptime(article['date'], '%b. %d, %Y')
-        await channel.send(article['link'])
-        # if article['link'] not in recent_links:
-        #     await channel.send(article['link'])
-        #     save_article_link(guild_id, article['link'], article_date.date())
+        article_date = datetime.strptime(article['date'], '%b %d, %Y')
+        if article['link'] not in recent_links:
+            await channel.send(article['link'])
+            save_article_link(guild_id, article['link'], article_date.date())
 
 async def post_new_articles():
     latest_articles = fetch_latest_articles()[:10]
@@ -72,7 +71,7 @@ async def post_new_articles():
                 recent_links = get_recent_links(guild_id)
 
                 for article in latest_articles:
-                    article_date = datetime.strptime(article['date'], '%b. %d, %Y')
+                    article_date = datetime.strptime(article['date'], '%b %d, %Y')
                     if article_date.date() == now.date() and article['link'] not in recent_links:
                         await channel.send(article['link'])
                         save_article_link(guild_id, article['link'], article_date.date())
