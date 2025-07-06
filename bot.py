@@ -18,6 +18,10 @@ tree = app_commands.CommandTree(client)
 
 scheduler = AsyncIOScheduler()
 
+def parse_article_date(raw_date):
+    cleaned = raw_date.replace(".", "")
+    return datetime.strptime(cleaned, '%b %d, %Y')
+
 @client.event
 async def on_ready():
     print(f"✅ Logged in as {client.user}")
@@ -52,10 +56,13 @@ async def fetch_and_post_articles(guild_id, channel):
     recent_links = get_recent_links(guild_id)
 
     for article in latest_articles:
-        article_date = datetime.strptime(article['date'], '%b %d, %Y')
-        if article['link'] not in recent_links:
-            await channel.send(article['link'])
-            save_article_link(guild_id, article['link'], article_date.date())
+        try:
+            article_date = parse_article_date(article['date'])
+            if article['link'] not in recent_links:
+                await channel.send(article['link'])
+                save_article_link(guild_id, article['link'], article_date.date())
+        except Exception as e:
+            print(f"Error processing article: {e}")
 
 async def post_new_articles():
     latest_articles = fetch_latest_articles()[:10]
@@ -70,9 +77,12 @@ async def post_new_articles():
                 recent_links = get_recent_links(guild_id)
 
                 for article in latest_articles:
-                    article_date = datetime.strptime(article['date'], '%b %d, %Y')
-                    if article_date.date() == now.date() and article['link'] not in recent_links:
-                        await channel.send(article['link'])
-                        save_article_link(guild_id, article['link'], article_date.date())
+                    try:
+                        article_date = parse_article_date(article['date'])
+                        if article_date.date() == now.date() and article['link'] not in recent_links:
+                            await channel.send(article['link'])
+                            save_article_link(guild_id, article['link'], article_date.date())
+                    except Exception as e:
+                        print(f"Error processing article for guild {guild_id}: {e}")
 
 client.run(DISCORD_TOKEN)
